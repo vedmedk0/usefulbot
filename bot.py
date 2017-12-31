@@ -7,13 +7,34 @@ Created on Mon Oct  2 22:25:18 2017
 
 import config
 import telebot
-s= None
+import sqlighter
 bot = telebot.TeleBot(config.token)
+DB=sqlighter.SQLighter(config.database_name)
 
+#команда старт
 @bot.message_handler(commands=['start'])
 def handle_start(message):
      bot.send_message(message.chat.id, 'тут будет старт')
-
+     
+#кол-во строчек в базе данных
+@bot.message_handler(commands=['base'])
+def handle_base(message):
+     bot.send_message(message.chat.id, str(DB.count_rows()))
+     
+#элементарный диалог
+@bot.message_handler(commands=['dial'])
+def handle_dialog(message):
+     bot.send_message(message.chat.id, 'пики точеные или хуи дроченые?')
+     bot.register_next_step_handler(message, pikes_or_dicks)
+def pikes_or_dicks(message):
+    try:
+        if message.text == 'хуи':
+            bot.send_message(message.chat.id, 'тут мог быть стикер с хуями')
+        if message.text == 'пики':
+            bot.send_message(message.chat.id, 'тут мог быть стикер с пиками')
+    except Exception as e:
+        bot.reply_to(message, 'oooops')
+#не знаю зачем
 @bot.message_handler(content_types=["text"])
 def repeat_all_messages(message):
     if (message.chat.id==config.ID_vedmedk0):
