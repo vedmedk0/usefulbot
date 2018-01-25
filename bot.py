@@ -53,7 +53,8 @@ def repeat_all_messages(message):
         pass
     else:
         #bot.send_message(message.chat.id, 'ты кто?')
-        bot.send_message(config.ID_vedmedk0,str(message.from_user.username) +' написал ' + message.text)
+        #bot.send_message(config.ID_vedmedk0,str(message.from_user.username) +' написал ' + message.text)
+        pass
        
         
 
