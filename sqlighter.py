@@ -16,7 +16,12 @@ class SQLighter:
     def select_all(self):
         """ Получаем все строки """
         with self.connection:
-            return self.cursor.execute('SELECT * FROM helpers').fetchall()
+            return self.cursor.execute('SELECT * FROM helpers ').fetchall()
+        
+    def select_notif_specified(self, notif):
+        """ Получаем все строки """
+        with self.connection:
+            return self.cursor.execute('SELECT telegram_id FROM helpers WHERE notification = {} '.format(notif)).fetchall()
 
     def select_single(self, rownum):
         """ Получаем одну строку с номером rownum """
@@ -28,6 +33,7 @@ class SQLighter:
         with self.connection:
             result = self.cursor.execute('SELECT * FROM helpers').fetchall()
             return len(result)
+        
 
     def close(self):
         """ Закрываем текущее соединение с БД """
