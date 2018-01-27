@@ -11,7 +11,7 @@ import sqlighter
 bot = telebot.TeleBot(config.token)
 DB=sqlighter.SQLighter(config.database_name)
 
-class User:
+class User: #Класс для сбора информации о новом хелпере, все поля селфэксплейнинг
     def __init__(self, name):
         self.name = name
         self.taglist=[]
@@ -19,7 +19,7 @@ class User:
         self.telegram_usernane = None
         self.notif = None
     
-    def Userinfo (self):
+    def Userinfo (self): # Метод для вывода строки с инфой из вышеперечисленных полей
         return 'имя: {} \n username: {} \n notif: {} \n taglist: {}'.format(self.name, self.telegram_username,self.notif,self.taglist)
 #словарь, для того чтобы хранить данные между вызовами функций диалога    
 user_dict = {}
@@ -34,43 +34,48 @@ def handle_start(message):
 def handle_myid(message):
      bot.send_message(message.chat.id, str(message.from_user.id))
      
-#новая строк
+#диалог для новой строки
 @bot.message_handler(commands=['newline'])
 def new_line(message):
     bot.send_message(message.chat.id, 'Как к тебе обращаться?')
-
-    bot.register_next_step_handler(message, new_line_notif)
+    bot.register_next_step_handler(message, new_line_notif)#следующий шаг диалога
     
 def new_line_notif(message):
-    Newhelper=User(message.text)
+    Newhelper=User(message.text)#создаем нового юзера
     Newhelper.telegram_id=message.from_user.id
-    Newhelper.telegram_username=message.from_user.username    
-    user_dict[message.chat.id]=Newhelper
+    Newhelper.telegram_username=message.from_user.username #заполняем поля известной инфой   
+    user_dict[message.chat.id]=Newhelper #сохраняем в словаре по ключу-айди
     bot.send_message(message.chat.id, 'Выбери способ оповещений. 2 - юзер видит твое имя и пишет тебе сам, 1 - тебя оповещает бот, и ты отзываешься если можешь')
-    bot.register_next_step_handler(message, new_line_taglist)
+    bot.register_next_step_handler(message, new_line_taglist)#следующий шаг диалога
     
 def new_line_taglist(message):
-    Newhelper=user_dict[message.chat.id]
-    Newhelper.notif=message.text
+    if message.text not in ["1","2"]: # на случай если юзер написал что-то кроме 1 или 2
+        bot.send_message(message.chat.id, 'Что-то пошло не так, напишите 1 или 2!')
+        bot.register_next_step_handler(message, new_line_taglist)
+        return
+    Newhelper=user_dict[message.chat.id]#вызываем из словаря недозаполненного юзера
+    Newhelper.notif=int(message.text) #добавляем метку нотификации
     bot.send_message(message.chat.id, 'Теги через пробел (потом тут будут кнопки(наверное))')
-    bot.register_next_step_handler(message, end_of_procedure)
+    bot.register_next_step_handler(message, end_of_procedure)#следующий шаг диалога
     
 def end_of_procedure(message):
-    Newhelper=user_dict[message.chat.id]
-    Newhelper.taglist=message.text.split()
+    Newhelper=user_dict[message.chat.id]#вызываем из словаря недозаполненного юзера
+    Newhelper.taglist=message.text.split() #заполняем теглист листом строк-тегов
     #новые строчки в ббазе данных
+    DB.new_entry(Newhelper) #метод для добавления новых строк
     #проверка вывода
-    bot.send_message(message.chat.id, Newhelper.Userinfo() )
+    bot.send_message(message.chat.id, Newhelper.Userinfo() )#только для дебага
 
      
-#список людей - обязательно с параметром 1 или 2
+#список людей по метке нотификации например /base2 2
 @bot.message_handler(commands=['base2'])
 def handle_base(message):
-    com=message.text.split()
-    if com[1] in ["1","2"] and len(com)>1:
+    com=message.text.split(maxsplit=1) #Превратили строку в лист строк, чтобы отделить команду от параметров
+    if com[1] in ["1","2"] and len(com)==2: #проверка формата команды - вдруг там не 1/2, или лишнего написано
         bot.send_message(message.chat.id, str(DB.select_notif_specified(com[1])))
         
-#список людей по тегу и нотиф
+#список людей по тегу и нотиф, например /base4 Вышмат 1
+#Эта, как и те что ниже, работает примерно так же как и  handle_base (Какие-то не очень говорящие имена)
 @bot.message_handler(commands=['base4'])
 def extract_by_tag_notif(message):
     com=message.text.split(maxsplit=2)
@@ -78,7 +83,7 @@ def extract_by_tag_notif(message):
         bot.send_message(message.chat.id, str(DB.select_tag_notif(com[1],com[2])))
         #bot.send_message(message.chat.id, str(com[1]))
 
-#список людей по тегу       
+#список людей по тегу например /base3 Вышмат
 @bot.message_handler(commands=['base3'])
 def extract_by_tag(message):
     com=message.text.split(maxsplit=2)
@@ -109,6 +114,7 @@ def pikes_or_dicks(message):
     except Exception as e:
         bot.reply_to(message, 'oooops')
 #не знаю зачем
+#чтобы мне в личку стучал если кто-то пишет
 @bot.message_handler(content_types=["text"])
 def repeat_all_messages(message):
     if (message.chat.id==config.ID_vedmedk0):
