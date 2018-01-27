@@ -19,10 +19,20 @@ class SQLighter:
             return self.cursor.execute('SELECT * FROM helpers ').fetchall()
         
     def select_notif_specified(self, notif):
+        """ Получаем юзернейм тех, у кого 1 или 2"""
+        with self.connection:
+            return self.cursor.execute('SELECT DISTINCT Telegram_username FROM helpers WHERE notification = {} '.format(notif)).fetchall()
+        
+    def select_tag_specified(self, tag):
+        """ Получаем по тегу """
+        with self.connection:
+            return self.cursor.execute("SELECT DISTINCT Telegram_username FROM helpers WHERE helptags = '{}'".format(tag)).fetchall()
+        
+    def select_tag_notif(self, tag, notif):
         """ Получаем все строки """
         with self.connection:
-            return self.cursor.execute('SELECT telegram_id FROM helpers WHERE notification = {} '.format(notif)).fetchall()
-
+            return self.cursor.execute("SELECT DISTINCT Telegram_username FROM helpers WHERE helptags = '{}' AND notification = {} ".format(tag,notif)).fetchall()
+        
     def select_single(self, rownum):
         """ Получаем одну строку с номером rownum """
         with self.connection:
