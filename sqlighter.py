@@ -18,10 +18,15 @@ class SQLighter:
         with self.connection:
             return self.cursor.execute('SELECT * FROM helpers ').fetchall()
         
+    def select_all_tags(self):
+        """ Получаем все теги """
+        with self.connection:
+            return self.cursor.execute('SELECT DISTINCT helptags FROM helpers ').fetchall()
+        
     def new_entry(self, User):
         with self.connection:
             for tag in User.taglist:
-                self.cursor.execute("INSERT INTO helpers (Telegram_id, Telegram_username, Name, helptags, notification) VALUES ({},'{}','{}','{}',{}); ".format(User.telegram_id, User.telegram_username, User.name, tag, User.notif))
+                self.cursor.execute("INSERT INTO helpers (Telegram_id, Telegram_username, Name, helptags, notification) VALUES ({},'{}','{}','{}',{}); ".format(User.telegram_id, User.telegram_username, User.name, tag.capitalize(), User.notif))
         
     def select_notif_specified(self, notif):
         """ Получаем юзернейм тех, у кого 1 или 2"""
@@ -36,7 +41,7 @@ class SQLighter:
     def select_tag_notif(self, tag, notif):
         """ Получаем все строки """
         with self.connection:
-            return self.cursor.execute("SELECT DISTINCT Telegram_username FROM helpers WHERE helptags = '{}' AND notification = {} ".format(tag,notif)).fetchall()
+            return self.cursor.execute("SELECT DISTINCT Telegram_id FROM helpers WHERE helptags = '{}' AND notification = {} ".format(tag,notif)).fetchall()
         
     def select_single(self, rownum):
         """ Получаем одну строку с номером rownum """
