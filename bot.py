@@ -97,6 +97,43 @@ def extract_by_tag(message):
 def how_many_rows(message):
      bot.send_message(message.chat.id, str(DB.count_rows()))
      
+@bot.message_handler(commands=['halp'])
+def halp(message):
+    list_of_all_tags(message)
+    bot.send_message(message.chat.id, 'Напиши мне тег, который тебя интересует')
+    bot.register_next_step_handler(message, halp_step_two)
+    
+def halp_step_two(message)  :  
+    tags=sorted(DB.select_all_tags(),key= lambda x:x[0])
+    tagslist=list()
+    for tag in tags:
+        tagslist.append(tag[0])
+    if message.text.capitalize() in tagslist:
+        bot.send_message(message.chat.id, 'Сейчас тебе всех сдам')
+        bot.register_next_step_handler(message, halp_step_three)
+    else:
+        bot.send_message(message.chat.id, 'Такого тега нет, попробуйте еще раз!')
+        bot.register_next_step_handler(message, halp_step_two)
+        return
+
+def halp_step_three(message):
+    tag=message.text
+    bot.send_message(message.chat.id, 'Этим сам напишешь!')
+    bot.send_message(message.chat.id, str(DB.select_tag_notif(tag,'2')))
+    #пока так
+    bot.send_message(message.chat.id, 'Эти тебе напишут (наверное)!')
+    bot.send_message(message.chat.id, str(DB.select_tag_notif(tag,'1'))) 
+
+#кол-во строчек в базе данных
+@bot.message_handler(commands=['basetags'])
+def list_of_all_tags(message):
+    output='Вот список всех гендеров. \n'
+    tags=sorted(DB.select_all_tags(),key= lambda x:x[0])#выдает таплы, поэтому сортируем хитро
+    for tag in tags:
+        output+='{} \n'.format(tag[0])
+    output+='не мисгендерь!'
+    bot.send_message(message.chat.id, output)
+     
 #элементарный диалог
 @bot.message_handler(commands=['dial'])
 def handle_dialog(message):
