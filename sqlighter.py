@@ -43,6 +43,26 @@ class SQLighter:
         with self.connection:
             return self.cursor.execute("SELECT DISTINCT Telegram_id FROM helpers WHERE helptags = '{}' AND notification = {} ".format(tag,notif)).fetchall()
         
+
+
+
+        
+    def select_ids_when_notif_is_one(self, tag):
+        """ Получаем все строки """
+        with self.connection:
+            return self.cursor.execute("SELECT DISTINCT Telegram_id FROM helpers WHERE helptags = '{}' AND notification = 1 ".format(tag)).fetchall()
+        
+        
+    def select_usernames_when_notif_is_two(self, tag):
+        """ Получаем все строки """
+        with self.connection:
+            return self.cursor.execute("SELECT DISTINCT Telegram_username FROM helpers WHERE helptags = '{}' AND notification = 2 ".format(tag)).fetchall()
+
+
+
+
+
+       
     def select_single(self, rownum):
         """ Получаем одну строку с номером rownum """
         with self.connection:

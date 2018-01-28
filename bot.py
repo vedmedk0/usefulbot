@@ -8,6 +8,7 @@ Created on Mon Oct  2 22:25:18 2017
 import config
 import telebot
 import sqlighter
+import helpers
 bot = telebot.TeleBot(config.token)
 DB=sqlighter.SQLighter(config.database_name)
 
@@ -103,26 +104,26 @@ def halp(message):
     bot.send_message(message.chat.id, 'Напиши мне тег, который тебя интересует')
     bot.register_next_step_handler(message, halp_step_two)
     
-def halp_step_two(message)  :  
+def halp_step_two(message):
     tags=sorted(DB.select_all_tags(),key= lambda x:x[0])
     tagslist=list()
     for tag in tags:
         tagslist.append(tag[0])
     if message.text.capitalize() in tagslist:
         bot.send_message(message.chat.id, 'Сейчас тебе всех сдам')
-        bot.register_next_step_handler(message, halp_step_three)
+        return_by_tag(message)
     else:
         bot.send_message(message.chat.id, 'Такого тега нет, попробуйте еще раз!')
         bot.register_next_step_handler(message, halp_step_two)
         return
 
-def halp_step_three(message):
+def return_by_tag(message):
     tag=message.text
     bot.send_message(message.chat.id, 'Этим сам напишешь!')
-    bot.send_message(message.chat.id, str(DB.select_tag_notif(tag,'2')))
+    bot.send_message(message.chat.id, str(DB.select_usernames_when_notif_is_two(tag)))
     #пока так
     bot.send_message(message.chat.id, 'Эти тебе напишут (наверное)!')
-    bot.send_message(message.chat.id, str(DB.select_tag_notif(tag,'1'))) 
+    bot.send_message(message.chat.id, str(DB.select_ids_when_notif_is_one(tag))) 
 
 #кол-во строчек в базе данных
 @bot.message_handler(commands=['basetags'])
@@ -133,7 +134,7 @@ def list_of_all_tags(message):
         output+='{} \n'.format(tag[0])
     output+='не мисгендерь!'
     bot.send_message(message.chat.id, output)
-     
+'''
 #элементарный диалог
 @bot.message_handler(commands=['dial'])
 def handle_dialog(message):
@@ -150,6 +151,8 @@ def pikes_or_dicks(message):
             #bot.send_sticker(message.chat_id, "CAADAgAD2gADsJjjA6aBdBwtR50XAg")
     except Exception as e:
         bot.reply_to(message, 'oooops')
+        
+
 #не знаю зачем
 #чтобы мне в личку стучал если кто-то пишет
 @bot.message_handler(content_types=["text"])
@@ -164,7 +167,7 @@ def repeat_all_messages(message):
         #bot.send_message(config.ID_vedmedk0,str(message.from_user.username) +' написал ' + message.text)
         pass
        
-        
+'''        
 
 
 if __name__ == '__main__':
