@@ -8,7 +8,6 @@ Created on Mon Oct  2 22:25:18 2017
 import config
 import telebot
 import sqlighter
-import helpers
 bot = telebot.TeleBot(config.token)
 DB=sqlighter.SQLighter(config.database_name)
 
@@ -34,6 +33,10 @@ def handle_start(message):
 @bot.message_handler(commands=['myid'])
 def handle_myid(message):
      bot.send_message(message.chat.id, str(message.from_user.id))
+     
+@bot.message_handler(commands=['talktoved'])
+def talktoved(message):
+     bot.send_message(config.ID_vedmedk0, 'hello ved')
      
 #диалог для новой строки
 @bot.message_handler(commands=['newline'])
@@ -119,21 +122,45 @@ def halp_step_two(message):
 
 def return_by_tag(message):
     tag=message.text
-    bot.send_message(message.chat.id, 'Этим сам напишешь!')
-    bot.send_message(message.chat.id, str(DB.select_usernames_when_notif_is_two(tag)))
+    #bot.send_message(message.chat.id, 'Этим сам напишешь!')
+    bot.send_message(message.chat.id, output_of_list(DB.select_usernames_when_notif_is_two(tag),'Можешь им написать сам \n',usernames=True))
     #пока так
     bot.send_message(message.chat.id, 'Эти тебе напишут (наверное)!')
-    bot.send_message(message.chat.id, str(DB.select_ids_when_notif_is_one(tag))) 
+    #bot.send_message(message.chat.id, str(DB.select_ids_when_notif_is_one(tag)))
+    send_notifications(tag,message.from_user.username)
+
+#код оповещения    
+def send_notifications(tag,username):
+    output='Привет! @'+username+' требуется помощь по теме "'+tag+'"! Напиши ему'
+    users_id_list=DB.select_ids_when_notif_is_one(tag)
+    for user_id in users_id_list:
+        bot.send_message(int(user_id[0]), output)
+    
 
 #кол-во строчек в базе данных
 @bot.message_handler(commands=['basetags'])
 def list_of_all_tags(message):
-    output='Вот список всех гендеров. \n'
+    bot.send_message(message.chat.id, output_of_list(DB.select_all_tags(),'Вот список всех гендеров. \n','не мисгендерь!'))
+"""  output='Вот список всех гендеров. \n'
     tags=sorted(DB.select_all_tags(),key= lambda x:x[0])#выдает таплы, поэтому сортируем хитро
     for tag in tags:
         output+='{} \n'.format(tag[0])
-    output+='не мисгендерь!'
-    bot.send_message(message.chat.id, output)
+    output+='не мисгендерь!'"""
+    
+    
+#функция для формирования строки со списком из запроса
+#Необходима потому что запрос выдает данные как несортированный лист таплов, что не очень удобно
+#Чтобы не повторять код, лучше написать отдельную функцию
+#стр1 и стр2 - строки до и после уже сортированного списка
+def output_of_list(dbresult,str1='',str2='',usernames= False):
+    res=str1
+    items=sorted(dbresult,key= lambda x:x[0])#выдает таплы, поэтому сортируем хитро
+    for item in items:
+        if usernames == True:
+            res+='@'
+        res+='{} \n'.format(item[0])
+    res+=str2
+    return res
 '''
 #элементарный диалог
 @bot.message_handler(commands=['dial'])
