@@ -8,6 +8,7 @@ Created on Mon Oct  2 22:25:18 2017
 import config
 import telebot
 import sqlighter
+from telebot import types
 bot = telebot.TeleBot(config.token)
 DB=sqlighter.SQLighter(config.database_name)
 
@@ -16,11 +17,11 @@ class User: #Класс для сбора информации о новом х�
         self.name = name
         self.taglist=[]
         self.telegram_id = None
-        self.telegram_usernane = None
+        self.telegram_username = None
         self.notif = None
     
     def Userinfo (self): # Метод для вывода строки с инфой из вышеперечисленных полей
-        return 'имя: {} \n username: {} \n notif: {} \n taglist: {}'.format(self.name, self.telegram_username,self.notif,self.taglist)
+        return 'имя: {} \nusername: {} \nnotif: {} \ntaglist: {}'.format(self.name, self.telegram_username,self.notif,self.taglist)
 #словарь, для того чтобы хранить данные между вызовами функций диалога    
 user_dict = {}
 
@@ -41,16 +42,22 @@ def talktoved(message):
 #диалог для новой строки
 @bot.message_handler(commands=['newline'])
 def new_line(message):
-    bot.send_message(message.chat.id, 'Как к тебе обращаться?')
-    bot.register_next_step_handler(message, new_line_notif)#следующий шаг диалога
+    if not DB.is_in_base(message.from_user.id): #Если человека нет в базе
+        bot.send_message(message.chat.id, 'Как к тебе обращаться?')
+        bot.register_next_step_handler(message, new_line_notif)#следующий шаг диалога
+    else:
+        bot.send_message(message.chat.id, 'Напиши теги через пробел')
+        bot.register_next_step_handler(message, add_tags)# Следующий шаг - если есть в базе
     
 def new_line_notif(message):
     Newhelper=User(message.text)#создаем нового юзера
     Newhelper.telegram_id=message.from_user.id
     Newhelper.telegram_username=message.from_user.username #заполняем поля известной инфой   
     user_dict[message.chat.id]=Newhelper #сохраняем в словаре по ключу-айди
-    bot.send_message(message.chat.id, 'Выбери способ оповещений. 2 - юзер видит твое имя и пишет тебе сам, 1 - тебя оповещает бот, и ты отзываешься если можешь')
-    bot.register_next_step_handler(message, new_line_taglist)#следующий шаг диалога
+    markup = types.ReplyKeyboardMarkup(one_time_keyboard=True)
+    markup.add('1', '2') #Имена кнопок
+    msg = bot.reply_to(message, 'Выбери способ оповещений. 2 - публичный, юзер видит твое имя и пишет тебе сам, 1 - приватный, тебя оповещает бот, и ты отзываешься если можешь', reply_markup=markup)
+    bot.register_next_step_handler(msg, new_line_taglist)#следующий шаг диалога
     
 def new_line_taglist(message):
     if message.text not in ["1","2"]: # на случай если юзер написал что-то кроме 1 или 2
@@ -69,6 +76,16 @@ def end_of_procedure(message):
     DB.new_entry(Newhelper) #метод для добавления новых строк
     #проверка вывода
     bot.send_message(message.chat.id, Newhelper.Userinfo() )#только для дебага
+    
+def add_tags(message):
+    Oldhelper=User(DB.myname(message.from_user.id))
+    Oldhelper.telegram_id=message.from_user.id
+    Oldhelper.telegram_username=message.from_user.username
+    Oldhelper.notif=DB.mynotif(message.from_user.id)
+    Oldhelper.taglist=message.text.split()
+    DB.new_entry(Oldhelper)
+    bot.send_message(message.chat.id,Oldhelper.Userinfo() )
+    
 
      
 #список людей по метке нотификации например /base2 2
@@ -141,6 +158,9 @@ def send_notifications(tag,username):
 @bot.message_handler(commands=['basetags'])
 def list_of_all_tags(message):
     bot.send_message(message.chat.id, output_of_list(DB.select_all_tags(),'Вот список всех гендеров. \n','не мисгендерь!'))
+    
+    
+
 """  output='Вот список всех гендеров. \n'
     tags=sorted(DB.select_all_tags(),key= lambda x:x[0])#выдает таплы, поэтому сортируем хитро
     for tag in tags:
@@ -161,6 +181,98 @@ def output_of_list(dbresult,str1='',str2='',usernames= False):
         res+='{} \n'.format(item[0])
     res+=str2
     return res
+
+def do_if_in_base(f):
+    def wrapper(message):
+        if DB.is_in_base(message.from_user.id):
+            f(message)
+        else:
+            bot.send_message(message.chat.id, "Тебя нет в базе!")        
+    return wrapper
+
+
+@bot.message_handler(commands=['keyboardtest1'])
+def keytest1(message):
+    markup = types.ReplyKeyboardMarkup(one_time_keyboard=True)
+    markup.add('пики', 'хуи') #Имена кнопок
+    msg = bot.reply_to(message, 'пики точеные или хуи дроченые?', reply_markup=markup)
+    bot.register_next_step_handler(msg, pikesordicks)
+    
+def pikesordicks(message):
+    if message.text=='пики':
+        bot.send_message(message.chat.id, 'тут мог быть стикер с пиками')
+    else:
+        bot.send_message(message.chat.id, 'тут мог быть стикер с хуями')
+    markup = types.ReplyKeyboardRemove(selective=False)
+    bot.send_message(message.chat.id, message, reply_markup=markup)
+
+
+
+@bot.message_handler(commands=['keyboardtest2'])
+def keytest2(message):
+    markup = types.ReplyKeyboardMarkup(row_width=2)
+    itembtn1 = types.KeyboardButton('a')
+    itembtn2 = types.KeyboardButton('v')
+    itembtn3 = types.KeyboardButton('d')
+    markup.add(itembtn1, itembtn2, itembtn3)
+    bot.send_message(message.chat.id, "Choose one letter:", reply_markup=markup)
+    
+
+@bot.message_handler(commands=['mystatus'])
+@do_if_in_base
+def mystatus(message):
+    notif=DB.mynotif(message.chat.id)
+    if notif == 1:
+        s='приватный, пользователи не видят ваш юзернейм, просьбы о помощи идут через бота.'
+    else:
+        s='публичный, пользователи видят ваш юзернейм и пишут вам лично.'
+    s1='Ваш статус оповещений - '+s+'\nВаши теги - \n'    
+    output=output_of_list(DB.mytags(message.chat.id),s1)
+    bot.send_message(message.chat.id,output)
+    pass
+
+@bot.message_handler(commands=['chnotif'])
+@do_if_in_base
+def change_notif(message):
+    markup = types.ReplyKeyboardMarkup(one_time_keyboard=True)
+    markup.add('1', '2') #Имена кнопок
+    msg = bot.reply_to(message, '1 - приватный, 2 - публичный', reply_markup=markup)
+    bot.register_next_step_handler(msg, change_notif_two)    
+
+def change_notif_two(message):
+    if message.text not in ["1","2"]: # на случай если юзер написал что-то кроме 1 или 2
+        bot.send_message(message.chat.id, 'Что-то пошло не так, напишите 1 или 2!')
+        bot.register_next_step_handler(message, change_notif)
+        return
+    DB.change_notif(message.from_user.id, message.text)
+    bot.send_message(message.chat.id,'Ваш статус успешно изменен!')
+
+@bot.message_handler(commands=['deltag'])
+@do_if_in_base
+def del_tags(message):
+    markup = types.ReplyKeyboardMarkup()
+    for tag in DB.mytags_list(message.from_user.id):
+        markup.add(tag)
+    #markup.add('/end_del')
+    msg = bot.reply_to(message, 'Выбери тег для удаления.', reply_markup=markup)
+    bot.register_next_step_handler(msg, del_step_two)
+    
+def del_step_two(message):
+    if message.text == '/end_del':
+        markup = types.ReplyKeyboardRemove(selective=False)
+        bot.send_message(message.chat.id,'Теги успешно удалены!', reply_markup=markup)
+        return
+    DB.del_tag(message.from_user.id,message.text)
+    markup = types.ReplyKeyboardMarkup()
+    for tag in DB.mytags_list(message.from_user.id):
+        markup.add(tag)
+    markup.add('/end_del')    
+    msg = bot.reply_to(message, 'Удали еще или нажми /end_del чтобы закончить', reply_markup=markup)
+    bot.register_next_step_handler(msg,del_step_two)
+    
+    
+
+
 '''
 #элементарный диалог
 @bot.message_handler(commands=['dial'])

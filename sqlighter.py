@@ -43,10 +43,52 @@ class SQLighter:
         with self.connection:
             return self.cursor.execute("SELECT DISTINCT Telegram_id FROM helpers WHERE helptags = '{}' AND notification = {} ".format(tag,notif)).fetchall()
         
-
-
-
+    #Информация обо мне    
+    def mytags(self, userid):
+        """теги по ид """
+        with self.connection:
+            return self.cursor.execute("SELECT DISTINCT helptags FROM helpers WHERE Telegram_id = '{}'".format(userid)).fetchall()
         
+        
+    def mytags_list(self, userid):
+        """теги по ид """
+        with self.connection:
+            a=self.cursor.execute("SELECT DISTINCT helptags FROM helpers WHERE Telegram_id = '{}'".format(userid)).fetchall()
+            return sorted([i[0] for i in a])
+
+    def mynotif(self, userid):
+        """ notif по ид """
+        with self.connection:
+            return self.cursor.execute("SELECT DISTINCT notification FROM helpers WHERE Telegram_id = '{}'".format(userid)).fetchall()[0][0]
+        
+    def myname(self, userid):
+        """ имя по ид """
+        with self.connection:
+            return self.cursor.execute("SELECT DISTINCT Name FROM helpers WHERE Telegram_id = '{}'".format(userid)).fetchall()[0][0]
+        
+    def is_in_base(self, userid):
+        with self.connection:
+            return 0 != len(self.cursor.execute("SELECT DISTINCT helptags FROM helpers WHERE Telegram_id = '{}'".format(userid)).fetchall())
+        
+        
+    #Изменения в таблице
+    def change_notif(self, userid,notif):
+        """ изменить notif по ид """
+        with self.connection:
+            return self.cursor.execute("UPDATE helpers SET notification = {} WHERE Telegram_id = '{}'".format(notif,userid))
+        
+    def del_tag(self, userid,tag):
+        """ удалить тег """
+        with self.connection:
+            return self.cursor.execute("DELETE FROM helpers WHERE Telegram_id='{}' AND helptags = '{}'".format(userid,tag))
+        
+        
+        
+        
+    
+
+
+    #Используются для отбора двух типов людей  
     def select_ids_when_notif_is_one(self, tag):
         """ Получаем все строки """
         with self.connection:
