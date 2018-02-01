@@ -36,7 +36,12 @@ def do_if_in_base(f):
 #команда старт
 @bot.message_handler(commands=['start'])
 def handle_start(message):
-     bot.send_message(message.chat.id, 'тут будет старт')
+     bot.send_message(message.chat.id, config.START_MSG)
+     
+     
+@bot.message_handler(commands=['help'])
+def handle_help(message):
+     bot.send_message(message.chat.id, config.HELP_MSG)
      
 #получить свой айди
 @bot.message_handler(commands=['myid'])
@@ -166,7 +171,7 @@ def send_notifications(tag,username):
 #Список всех тегов
 @bot.message_handler(commands=['basetags'])
 def list_of_all_tags(message):
-    bot.send_message(message.chat.id, output_of_list(DB.select_all_tags(),'Вот список всех гендеров. \n','не мисгендерь!'))
+    bot.send_message(message.chat.id, output_of_list(DB.select_all_tags(),'Вот список всех гендеров. \n','не мисгендерь!',splitter=', '))
 
 
 @bot.message_handler(commands=['toptags'])
@@ -264,7 +269,7 @@ def del_tags(message):
 def del_step_two(message):
     if message.text == '/end_del':
         markup = types.ReplyKeyboardRemove(selective=False)
-        bot.send_message(message.chat.id,'Теги успешно удалены!', reply_markup=markup)
+        #bot.send_message(message.chat.id,'Теги успешно удалены!', reply_markup=markup)
         return
     DB.del_tag(message.from_user.id,message.text)
     markup = types.ReplyKeyboardMarkup()
