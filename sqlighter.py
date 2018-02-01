@@ -21,7 +21,8 @@ class SQLighter:
     def select_all_tags(self):
         """ Получаем все теги """
         with self.connection:
-            return self.cursor.execute('SELECT DISTINCT helptags FROM helpers ').fetchall()
+            a = self.cursor.execute('SELECT DISTINCT helptags FROM helpers ').fetchall()
+            return sorted([i[0] for i in a])
         
     def new_entry(self, User):
         with self.connection:
@@ -43,12 +44,13 @@ class SQLighter:
         with self.connection:
             return self.cursor.execute("SELECT DISTINCT Telegram_id FROM helpers WHERE helptags = '{}' AND notification = {} ".format(tag,notif)).fetchall()
         
-    #Информация обо мне    
-    def mytags(self, userid):
-        """теги по ид """
-        with self.connection:
-            return self.cursor.execute("SELECT DISTINCT helptags FROM helpers WHERE Telegram_id = '{}'".format(userid)).fetchall()
         
+    def top_ten_tags(self):
+        """десятка самых популярных тегов"""
+        with self.connection:        
+            a = self.cursor.execute('SELECT helptags FROM helpers group by helptags ORDER BY COUNT(helptags) desc').fetchall()    
+            return [i[0] for i in a][:10]
+    #Информация обо мне    
         
     def mytags_list(self, userid):
         """теги по ид """
@@ -92,23 +94,17 @@ class SQLighter:
     def select_ids_when_notif_is_one(self, tag):
         """ Получаем все строки """
         with self.connection:
-            return self.cursor.execute("SELECT DISTINCT Telegram_id FROM helpers WHERE helptags = '{}' AND notification = 1 ".format(tag)).fetchall()
+            a = self.cursor.execute("SELECT DISTINCT Telegram_id FROM helpers WHERE helptags = '{}' AND notification = 1 ".format(tag)).fetchall()
+            return sorted([i[0] for i in a])
         
         
     def select_usernames_when_notif_is_two(self, tag):
         """ Получаем все строки """
         with self.connection:
-            return self.cursor.execute("SELECT DISTINCT Telegram_username FROM helpers WHERE helptags = '{}' AND notification = 2 ".format(tag)).fetchall()
+            a = self.cursor.execute("SELECT DISTINCT Telegram_username FROM helpers WHERE helptags = '{}' AND notification = 2 ".format(tag)).fetchall()
+            return sorted([i[0] for i in a])
 
 
-
-
-
-       
-    def select_single(self, rownum):
-        """ Получаем одну строку с номером rownum """
-        with self.connection:
-            return self.cursor.execute('SELECT * FROM helpers WHERE id = ?', (rownum,)).fetchall()[0]
 
     def count_rows(self):
         """ Считаем количество строк """

@@ -24,6 +24,14 @@ class User: #Класс для сбора информации о новом х�
         return 'имя: {} \nusername: {} \nnotif: {} \ntaglist: {}'.format(self.name, self.telegram_username,self.notif,self.taglist)
 #словарь, для того чтобы хранить данные между вызовами функций диалога    
 user_dict = {}
+#декоратор - функция работает только если человек в базе
+def do_if_in_base(f):
+    def wrapper(message):
+        if DB.is_in_base(message.from_user.id):
+            f(message)
+        else:
+            bot.send_message(message.chat.id, "Тебя нет в базе!")        
+    return wrapper
 
 #команда старт
 @bot.message_handler(commands=['start'])
@@ -118,18 +126,19 @@ def extract_by_tag(message):
 def how_many_rows(message):
      bot.send_message(message.chat.id, str(DB.count_rows()))
      
+#просьба о помощи     
 @bot.message_handler(commands=['halp'])
+@do_if_in_base
 def halp(message):
     list_of_all_tags(message)
-    bot.send_message(message.chat.id, 'Напиши мне тег, который тебя интересует')
-    bot.register_next_step_handler(message, halp_step_two)
+    markup = types.ReplyKeyboardMarkup(one_time_keyboard=True)
+    for tag in DB.top_ten_tags():
+        markup.add(tag)        
+    msg = bot.reply_to(message, 'Напиши мне тег, который тебя интересует, или выбери из топ-10', reply_markup=markup)
+    bot.register_next_step_handler(msg, halp_step_two)
     
 def halp_step_two(message):
-    tags=sorted(DB.select_all_tags(),key= lambda x:x[0])
-    tagslist=list()
-    for tag in tags:
-        tagslist.append(tag[0])
-    if message.text.capitalize() in tagslist:
+    if message.text.capitalize() in DB.select_all_tags():
         bot.send_message(message.chat.id, 'Сейчас тебе всех сдам')
         return_by_tag(message)
     else:
@@ -151,13 +160,18 @@ def send_notifications(tag,username):
     output='Привет! @'+username+' требуется помощь по теме "'+tag+'"! Напиши ему'
     users_id_list=DB.select_ids_when_notif_is_one(tag)
     for user_id in users_id_list:
-        bot.send_message(int(user_id[0]), output)
+        bot.send_message(int(user_id), output)
     
 
-#кол-во строчек в базе данных
+#Список всех тегов
 @bot.message_handler(commands=['basetags'])
 def list_of_all_tags(message):
     bot.send_message(message.chat.id, output_of_list(DB.select_all_tags(),'Вот список всех гендеров. \n','не мисгендерь!'))
+
+
+@bot.message_handler(commands=['toptags'])
+def toptagslist(message):
+    bot.send_message(message.chat.id, output_of_list(DB.top_ten_tags(),'Вот список топ-10 гендеров. \n','не мисгендерь!'))
     
     
 
@@ -172,24 +186,14 @@ def list_of_all_tags(message):
 #Необходима потому что запрос выдает данные как несортированный лист таплов, что не очень удобно
 #Чтобы не повторять код, лучше написать отдельную функцию
 #стр1 и стр2 - строки до и после уже сортированного списка
-def output_of_list(dbresult,str1='',str2='',usernames= False):
+def output_of_list(items,str1='',str2='',usernames= False, splitter='\n'):
     res=str1
-    items=sorted(dbresult,key= lambda x:x[0])#выдает таплы, поэтому сортируем хитро
     for item in items:
         if usernames == True:
             res+='@'
-        res+='{} \n'.format(item[0])
+        res+='{}{}'.format(item,splitter)
     res+=str2
     return res
-
-def do_if_in_base(f):
-    def wrapper(message):
-        if DB.is_in_base(message.from_user.id):
-            f(message)
-        else:
-            bot.send_message(message.chat.id, "Тебя нет в базе!")        
-    return wrapper
-
 
 @bot.message_handler(commands=['keyboardtest1'])
 def keytest1(message):
@@ -227,7 +231,7 @@ def mystatus(message):
     else:
         s='публичный, пользователи видят ваш юзернейм и пишут вам лично.'
     s1='Ваш статус оповещений - '+s+'\nВаши теги - \n'    
-    output=output_of_list(DB.mytags(message.chat.id),s1)
+    output=output_of_list(DB.mytags_list(message.chat.id),s1)
     bot.send_message(message.chat.id,output)
     pass
 
@@ -253,8 +257,8 @@ def del_tags(message):
     markup = types.ReplyKeyboardMarkup()
     for tag in DB.mytags_list(message.from_user.id):
         markup.add(tag)
-    #markup.add('/end_del')
-    msg = bot.reply_to(message, 'Выбери тег для удаления.', reply_markup=markup)
+    markup.add('/end_del')
+    msg = bot.reply_to(message, 'Выбери тег для удаления. (или нажми /end_del для отмены)', reply_markup=markup)
     bot.register_next_step_handler(msg, del_step_two)
     
 def del_step_two(message):
