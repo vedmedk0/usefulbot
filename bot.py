@@ -24,6 +24,7 @@ class User: #Класс для сбора информации о новом х�
         return 'имя: {} \nusername: {} \nnotif: {} \ntaglist: {}'.format(self.name, self.telegram_username,self.notif,self.taglist)
 #словарь, для того чтобы хранить данные между вызовами функций диалога    
 user_dict = {}
+tag_dict = {} #словарь для хранения тега между вызовами функций команды halp
 #декоратор - функция работает только если человек в базе
 def do_if_in_base(f):
     def wrapper(message):
@@ -32,6 +33,20 @@ def do_if_in_base(f):
         else:
             bot.send_message(message.chat.id, "Тебя нет в базе!")        
     return wrapper
+
+#функция для формирования строки со списком из запроса
+#Необходима потому что запрос выдает данные как несортированный лист таплов, что не очень удобно
+#Чтобы не повторять код, лучше написать отдельную функцию
+#стр1 и стр2 - строки до и после уже сортированного списка
+def output_of_list(items,str1='',str2='',usernames= False, splitter='\n'):
+    res=str1
+    for item in items:
+        if usernames == True:
+            res+='@'
+        res+='{}{}'.format(item,splitter)
+    res=res[:len(res)-len(splitter)]
+    res+=str2
+    return res
 
 #команда старт
 @bot.message_handler(commands=['start'])
@@ -79,7 +94,7 @@ def new_line_taglist(message):
         return
     Newhelper=user_dict[message.chat.id]#вызываем из словаря недозаполненного юзера
     Newhelper.notif=int(message.text) #добавляем метку нотификации
-    bot.send_message(message.chat.id, 'Теги через пробел (потом тут будут кнопки(наверное))')
+    bot.send_message(message.chat.id, 'Теги через пробел. Если один тег в несколько слов - используй нижнее_подчеркивание')
     bot.register_next_step_handler(message, end_of_procedure)#следующий шаг диалога
     
 def end_of_procedure(message):
@@ -154,15 +169,38 @@ def halp_step_two(message):
 def return_by_tag(message):
     tag=message.text
     #bot.send_message(message.chat.id, 'Этим сам напишешь!')
-    bot.send_message(message.chat.id, output_of_list(DB.select_usernames_when_notif_is_two(tag),'Можешь им написать сам \n',usernames=True))
+    taglist2=DB.select_usernames_names_when_notif_is_two(tag)
+    if taglist2:
+        bot.send_message(message.chat.id, output_of_list(taglist2,'Можешь им написать сам \n',usernames=True))
+    else:
+        bot.send_message(message.chat.id, 'Публичных пользователей с таким тегом нет!')   
     #пока так
-    bot.send_message(message.chat.id, 'Эти тебе напишут (наверное)!')
+    markup = types.ReplyKeyboardMarkup(one_time_keyboard=True)
+    markup.add('Да', 'Нет') #Имена кнопок
+    msg = bot.reply_to(message, 'Передать сообщение приватным пользователям?', reply_markup=markup)
+    tag_dict[message.from_user.id]=tag #чтобы передать тег в следующий шаг
+    bot.register_next_step_handler(msg, read_message_to_private)#следующий шаг диалога
     #bot.send_message(message.chat.id, str(DB.select_ids_when_notif_is_one(tag)))
-    send_notifications(tag,message.from_user.username)
+    #send_notifications(tag,message.from_user.username)
+
+def read_message_to_private(message):
+    if message.text == 'Да':
+        bot.send_message(message.chat.id, 'Напиши текст сообщения')
+        bot.register_next_step_handler(message, send_message_to_private)       
+    else:
+        bot.send_message(message.chat.id, 'Оповещение отправлено!')
+        send_notifications(tag_dict[message.from_user.id],message.from_user.username)
+        
+def send_message_to_private(message):
+    bot.send_message(message.chat.id, 'Оповещение с сообщением отправлено!')
+    send_notifications(tag_dict[message.from_user.id],message.from_user.username,message.text)
+
 
 #код оповещения    
-def send_notifications(tag,username):
+def send_notifications(tag,username,note=None):
     output='Привет! @'+username+' требуется помощь по теме "'+tag+'"! Напиши ему'
+    if note is not None:
+        output+='\nТакже он просил передать:"'+note+'"'
     users_id_list=DB.select_ids_when_notif_is_one(tag)
     for user_id in users_id_list:
         bot.send_message(int(user_id), output)
@@ -171,7 +209,7 @@ def send_notifications(tag,username):
 #Список всех тегов
 @bot.message_handler(commands=['basetags'])
 def list_of_all_tags(message):
-    bot.send_message(message.chat.id, output_of_list(DB.select_all_tags(),'Вот список всех гендеров. \n','не мисгендерь!',splitter=', '))
+    bot.send_message(message.chat.id, output_of_list(DB.select_all_tags(),'Cписок тегов, по которым можно обратиться: \n', '.',splitter=', '))
 
 
 @bot.message_handler(commands=['toptags'])
@@ -187,18 +225,7 @@ def toptagslist(message):
     output+='не мисгендерь!'"""
     
     
-#функция для формирования строки со списком из запроса
-#Необходима потому что запрос выдает данные как несортированный лист таплов, что не очень удобно
-#Чтобы не повторять код, лучше написать отдельную функцию
-#стр1 и стр2 - строки до и после уже сортированного списка
-def output_of_list(items,str1='',str2='',usernames= False, splitter='\n'):
-    res=str1
-    for item in items:
-        if usernames == True:
-            res+='@'
-        res+='{}{}'.format(item,splitter)
-    res+=str2
-    return res
+
 
 @bot.message_handler(commands=['keyboardtest1'])
 def keytest1(message):
@@ -235,8 +262,8 @@ def mystatus(message):
         s='приватный, пользователи не видят ваш юзернейм, просьбы о помощи идут через бота.'
     else:
         s='публичный, пользователи видят ваш юзернейм и пишут вам лично.'
-    s1='Ваш статус оповещений - '+s+'\nВаши теги - \n'    
-    output=output_of_list(DB.mytags_list(message.chat.id),s1)
+    s1='Ваш статус оповещений - '+s+'\nВаши теги - '    
+    output=output_of_list(DB.mytags_list(message.chat.id),str1=s1,str2='.',splitter=', ')
     bot.send_message(message.chat.id,output)
     pass
 

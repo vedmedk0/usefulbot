@@ -96,14 +96,20 @@ class SQLighter:
         with self.connection:
             a = self.cursor.execute("SELECT DISTINCT Telegram_id FROM helpers WHERE helptags = '{}' AND notification = 1 ".format(tag)).fetchall()
             return sorted([i[0] for i in a])
-        
+
         
     def select_usernames_when_notif_is_two(self, tag):
         """ Получаем все строки """
         with self.connection:
             a = self.cursor.execute("SELECT DISTINCT Telegram_username FROM helpers WHERE helptags = '{}' AND notification = 2 ".format(tag)).fetchall()
             return sorted([i[0] for i in a])
-
+        
+    def select_usernames_names_when_notif_is_two(self, tag):
+        """ Получаем все строки """
+        with self.connection:
+            a = self.cursor.execute("SELECT DISTINCT Telegram_username, Name FROM helpers WHERE helptags = '{}' AND notification = 2 ".format(tag)).fetchall()
+            a = sorted(a,key = lambda x:x[0])
+            return [i[0]+' - '+i[1] for i in a]
 
 
     def count_rows(self):
