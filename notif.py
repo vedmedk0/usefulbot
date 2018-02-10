@@ -11,4 +11,4 @@ bot=recommend.bot
 
 @bot.message_handler(commands=['inote'])
 def handle_inote(message):
-     bot.send_message(message.chat.id, 'я сообщенька из части со второй части')
+     bot.send_message(message.chat.id, 'я сообщенька из части со второй части.')
